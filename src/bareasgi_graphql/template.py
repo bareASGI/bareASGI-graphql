@@ -4,7 +4,7 @@ Graphiql template
 
 import json
 import string
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping
 
 GRAPHIQL_VERSION = '1.0.3'
 SUBSCRIPTIONS_TRANSPORT_VERSION = '0.7.3'
@@ -154,7 +154,7 @@ def make_template(
         graphiql_version: str = GRAPHIQL_VERSION,
         subscriptions_transport_version: str = SUBSCRIPTIONS_TRANSPORT_VERSION,
         title: str = 'GraphiQL',
-        headers: Optional[Mapping[str, Any]] = None
+        headers: Mapping[str, Any] | None = None
 ) -> str:
     return GRAPHIQL_TEMPLATE.substitute(
         host=host,

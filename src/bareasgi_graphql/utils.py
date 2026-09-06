@@ -3,8 +3,8 @@ Utilities
 """
 
 import asyncio
-from asyncio import Event
-from typing import AsyncIterator, Iterable, Optional, Set, Tuple, TYPE_CHECKING
+from asyncio import Event, Future
+from typing import Any, AsyncIterator, Iterable
 
 from bareasgi import (
     make_middleware_chain,
@@ -20,18 +20,13 @@ from graphql import (
     OperationType
 )
 
-if TYPE_CHECKING:
-    # pylint: disable=ungrouped-imports
-    from asyncio import Future
-    from typing import Any
-
 
 async def cancellable_aiter(
         async_iterator: MapAsyncIterator,
         cancellation_event: Event,
         *,
         cancel_pending: bool = True,
-        timeout: Optional[float] = None
+        timeout: float | None = None
 ) -> AsyncIterator:
     """[summary]
 
@@ -40,20 +35,20 @@ async def cancellable_aiter(
         cancellation_event (Event): A cancellable event
         cancel_pending (bool, optional): If True cancel pendings. Defaults to
             True.
-        timeout (Optional[float], optional): A timeout. Defaults to None.
+        timeout (float | None, optional): A timeout. Defaults to None.
 
     Returns:
         AsyncIterator: The async iterator
     """
     result_iter = async_iterator.__aiter__()
     cancellation_task = asyncio.create_task(cancellation_event.wait())
-    pending: Set["Future[Any]"] = {
+    pending: set[Future[Any]] = {
         cancellation_task,
         asyncio.create_task(result_iter.__anext__())
     }
 
     if timeout is None:
-        sleep_task: "Optional[Future[Any]]" = None
+        sleep_task: Future[Any] | None = None
     else:
         sleep_task = asyncio.create_task(asyncio.sleep(timeout))
         pending.add(sleep_task)
@@ -112,7 +107,7 @@ def has_subscription(document: DocumentNode) -> bool:
 
 
 def wrap_middleware(
-        middleware: Optional[HttpMiddlewareCallback],
+        middleware: HttpMiddlewareCallback | None,
         handler: HttpRequestCallback
 ) -> HttpRequestCallback:
     """Optionally wrap a handler with middleware"""
@@ -169,9 +164,9 @@ class ZeroEvent:
 
 def _first_valid_header(
         name: bytes,
-        headers: Iterable[Tuple[bytes, bytes]],
-        default: Optional[bytes]
-) -> Optional[bytes]:
+        headers: Iterable[tuple[bytes, bytes]],
+        default: bytes | None
+) -> bytes | None:
     return next(
         map(
             lambda x: x[1],

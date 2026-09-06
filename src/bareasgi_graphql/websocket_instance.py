@@ -2,21 +2,17 @@
 
 from abc import ABCMeta, abstractmethod
 import asyncio
+from asyncio import Future, Task
 import json
 import logging
 from typing import (
     Any,
     AsyncIterator,
     Callable,
-    Dict,
     Iterable,
-    List,
     Mapping,
     MutableMapping,
-    Optional,
-    Set,
-    Tuple,
-    Union,
+    cast,
 )
 
 from bareasgi import WebSocket
@@ -25,7 +21,7 @@ from graphql import ExecutionResult, GraphQLError, MapAsyncIterator
 
 from .utils import has_subscription
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 WS_INTERNAL_ERROR = 1011
 WS_PROTOCOL = "graphql-ws"
@@ -46,7 +42,7 @@ class ProtocolError(Exception):
     """A protocol error"""
 
 
-Id = Union[str, int]
+type Id = str | int
 
 
 class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
@@ -54,11 +50,11 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
 
     def __init__(self, web_socket: WebSocket, dumps: Callable[[Any], str]) -> None:
         self.web_socket = web_socket
-        self._subscriptions: MutableMapping[Id, asyncio.Future] = {}
+        self._subscriptions: MutableMapping[Id, Future] = {}
         self._is_closed = False
         self.dumps = dumps
 
-    async def start(self, subprotocols: Iterable[str]):
+    async def start(self, subprotocols: Iterable[str]) -> None:
         """Start the WebSocket connection
 
         Args:
@@ -73,8 +69,8 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
 
         _type = GQL_CONNECTION_KEEP_ALIVE
 
-        read_task: Optional[asyncio.Task] = None
-        pending: Set[asyncio.Future] = set()
+        read_task: Task | None = None
+        pending: set[Future] = set()
 
         while not (self._is_closed or _type in (GQL_CONNECTION_ERROR, GQL_CONNECTION_TERMINATE)):
 
@@ -107,7 +103,7 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
         if not self._is_closed:
             await self.web_socket.close()
 
-    async def _read_message(self) -> Tuple[str, Optional[Id], Optional[dict]]:
+    async def _read_message(self) -> tuple[str, Id | None, dict | None]:
         text = await self.web_socket.receive()
         if text is None:
             raise EOFError
@@ -119,11 +115,11 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
         if not isinstance(message, dict):
             raise ProtocolError('Expected the message to be an object.')
 
-        type_: Optional[str] = message['type']
+        type_: str | None = message['type']
         if not isinstance(type_, str):
             raise ProtocolError("Expected field 'type' to be a string")
 
-        id_: Optional[Id] = message.get('id')
+        id_: Id | None = message.get('id')
         if not (id_ is None or isinstance(id_, str) or isinstance(id_, int)):
             raise ProtocolError("Expected field 'id' to be an string?")
 
@@ -133,7 +129,7 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
 
         return type_, id_, payload
 
-    async def _on_message(self, type_: str, id_: Optional[Id], payload: Optional[dict]):
+    async def _on_message(self, type_: str, id_: Id | None, payload: dict | None) -> None:
 
         if type_ == GQL_CONNECTION_INIT:
             await self._on_connection_init(id_, payload)
@@ -150,7 +146,7 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
         else:
             raise ProtocolError(f"Received unknown message type '{type_}'.")
 
-    async def _on_connection_init(self, id_: Optional[Id], _connection_params: Optional[Any]):
+    async def _on_connection_init(self, id_: Id | None, _connection_params: Any | None) -> None:
         try:
             await self.web_socket.send(self._to_message('connection_ack', id_))
         except Exception as error:
@@ -158,22 +154,22 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
             await self.web_socket.close(WS_INTERNAL_ERROR)
             raise
 
-    async def _on_connection_terminate(self):
+    async def _on_connection_terminate(self) -> None:
         await self.web_socket.close(WS_INTERNAL_ERROR)
 
     @abstractmethod
     async def subscribe(
             self,
             query: str,
-            variables: Optional[Dict[str, Any]],
-            operation_name: Optional[str]
+            variables: dict[str, Any],
+            operation_name: str | None
     ) -> MapAsyncIterator:
         """Execute a subscription.
 
         Args:
             query (str): The subscription query.
-            variables (Optional[Dict[str, Any]]): Optional variables.
-            operation_name (Optional[str]): An optional operation name.
+            variables (dict[str, Any]): Optional variables.
+            operation_name (str | None): An optional operation name.
 
         Returns:
             MapAsyncIterator: An asynchronous iterator of the results.
@@ -183,21 +179,21 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
     async def query(
             self,
             query: str,
-            variables: Optional[Dict[str, Any]],
-            operation_name: Optional[str]
+            variables: dict[str, Any],
+            operation_name: str | None
     ) -> ExecutionResult:
         """Execute a query
 
         Args:
             query (str): The subscription query.
-            variables (Optional[Dict[str, Any]]): Optional variables.
-            operation_name (Optional[str]): An optional operation name.
+            variables (dict[str, Any]): Optional variables.
+            operation_name (str | None): An optional operation name.
 
         Returns:
             ExecutionResult: The query results.
         """
 
-    async def _on_start(self, id_: Optional[Id], payload: Optional[Union[list, dict]]):
+    async def _on_start(self, id_: Id | None, payload: list | dict | None) -> None:
         try:
             # An id is required for a start operation.
             if id_ is None:
@@ -213,7 +209,7 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
             document = graphql.parse(query)
             # noinspection PyUnresolvedReferences
             if has_subscription(document):
-                result: Union[MapAsyncIterator, ExecutionResult] = await self.subscribe(
+                result: MapAsyncIterator | ExecutionResult = await self.subscribe(
                     query,
                     variable_values,
                     operation_name
@@ -227,7 +223,7 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
 
             if isinstance(result, ExecutionResult):
                 await self._send_execution_result(id_, result)
-                return True
+                return
 
             self._add_subscription(id_, result)
 
@@ -239,7 +235,7 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
             self._process_subscription(id_, result)
         )
 
-    def _remove_subscription(self, future: asyncio.Future) -> None:
+    def _remove_subscription(self, future: Future) -> None:
         id_ = next(k for k, v in self._subscriptions.items() if v == future)
         del self._subscriptions[id_]
 
@@ -265,7 +261,7 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
         await self._unsubscribe(id_)
 
     @classmethod
-    async def _stop_subscription(cls, future: asyncio.Future) -> None:
+    async def _stop_subscription(cls, future: Future) -> None:
         future.cancel()
         await future
         result = future.result()
@@ -279,7 +275,7 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
         for id_ in self._subscriptions.keys():
             await self._unsubscribe(id_)
 
-    async def _send_error(self, type_: str, id_: Optional[Id], error: Exception) -> None:
+    async def _send_error(self, type_: str, id_: Id | None, error: Exception) -> None:
         await self.web_socket.send(self._to_message(type_, id_, {'message': str(error)}))
 
     async def _send_execution_result(
@@ -287,7 +283,7 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
             id_: Id,
             execution_result: ExecutionResult
     ) -> None:
-        result: Dict[str, Union[Dict[str, Any], List[Any]]] = dict()
+        result: dict[str, dict[str, Any] | list[Any]] = {}
 
         if execution_result.data:
             result["data"] = execution_result.data
@@ -303,10 +299,10 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
     def _to_message(
             self,
             type_: str,
-            id_: Optional[Id] = None,
-            payload: Optional[Any] = None
+            id_: Id | None = None,
+            payload: Any | None = None
     ) -> str:
-        message: Dict[str, Any] = {'type': type_}
+        message: dict[str, Any] = {'type': type_}
         if id_ is not None:
             message['id'] = id_
         if payload is not None:
@@ -316,8 +312,8 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
     @classmethod
     def _parse_start_payload(
             cls,
-            payload: Optional[Union[dict, list]]
-    ) -> Tuple[str, Optional[Dict[str, Any]], Optional[str]]:
+            payload: dict | list | None
+    ) -> tuple[str, dict[str, Any], str | None]:
 
         if not isinstance(payload, dict):
             raise ProtocolError("required 'payload' field must be an object.")
@@ -337,4 +333,4 @@ class GraphQLWebSocketHandlerInstanceBase(metaclass=ABCMeta):
             raise ProtocolError(
                 "optional 'operationName' field must be str? in 'payload'.")
 
-        return query, variable_values, operation_name
+        return query, cast(dict[str, Any], variable_values), operation_name

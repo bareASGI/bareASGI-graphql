@@ -1,25 +1,29 @@
-"""Helpers for installing the graphql middleware"""
+"""Helper functions for adding the graphene middleware"""
 
 import json
 import logging
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
-from bareasgi import Application, LifespanRequest, HttpMiddlewareCallback
-from graphql import GraphQLSchema
+from bareasgi import (
+    Application,
+    LifespanRequest,
+    HttpMiddlewareCallback
+)
+from graphene import Schema
 
-from .controller import GraphQLController
+from .controller import GrapheneController
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
-GRAPHQL_INFO_KEY = '__bareasgi_graphql_next.graphql__'
+GRAPHENE_INFO_KEY = '__bareasgi_graphql.graphene__'
 
 
-def add_graphql_next(
+def add_graphene(
         app: Application,
-        schema: GraphQLSchema,
+        schema: Schema,
         path_prefix: str = '',
-        rest_middleware: Optional[HttpMiddlewareCallback] = None,
-        view_middleware: Optional[HttpMiddlewareCallback] = None,
+        rest_middleware: HttpMiddlewareCallback | None = None,
+        view_middleware: HttpMiddlewareCallback | None = None,
         graphql_middleware=None,
         ping_interval: float = 10,
         loads: Callable[[str], Any] = json.loads,
@@ -29,12 +33,12 @@ def add_graphql_next(
 
     Args:
         app (Application): The bareASGI application.
-        schema (GraphQLSchema): The GraphQL schema to use.
+        schema (Schema): The Graphene schema to use.
         path_prefix (str, optional): An optional path prefix from which to
             provide endpoints. Defaults to ''.
-        rest_middleware (Optional[HttpMiddlewareCallback], optional): Middleware
+        rest_middleware (HttpMiddlewareCallback | None, optional): Middleware
             for the rest end points. Defaults to None.
-        view_middleware (Optional[HttpMiddlewareCallback], optional): Middleware
+        view_middleware (HttpMiddlewareCallback | None, optional): Middleware
             for the GraphiQL end point. Defaults to None.
         graphql_middleware ([type], optional): Middleware for graphql-core-next.
             Defaults to None.
@@ -49,9 +53,9 @@ def add_graphql_next(
     async def start_graphql(request: LifespanRequest) -> None:
         """Start the GraphQL controller"""
 
-        logger.debug('Starting the GraphQL controller')
+        LOGGER.debug('Starting the GraphQL controller')
 
-        controller = GraphQLController(
+        controller = GrapheneController(
             schema,
             path_prefix,
             graphql_middleware,
@@ -62,16 +66,17 @@ def add_graphql_next(
         controller.add_routes(
             app,
             path_prefix,
-            rest_middleware, view_middleware
+            rest_middleware,
+            view_middleware
         )
-        request.info[GRAPHQL_INFO_KEY] = controller
+        request.info[GRAPHENE_INFO_KEY] = controller
 
     async def stop_graphql(request: LifespanRequest) -> None:
         """Stop the GraphQL controller"""
 
-        logger.debug('Stopping the GraphQL controller')
+        LOGGER.debug('Stopping the GraphQL controller')
 
-        graphql_controller: GraphQLController = request.info[GRAPHQL_INFO_KEY]
+        graphql_controller: GrapheneController = request.info[GRAPHENE_INFO_KEY]
         await graphql_controller.shutdown()
 
     app.startup_handlers.append(start_graphql)

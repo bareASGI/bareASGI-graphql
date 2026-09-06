@@ -3,16 +3,16 @@
 The package can be installed with pip.
 
 ```bash
-pip install bareasgi-graphql-next
+pip install bareasgi-graphql
 ```
 
-This is a Python 3.8 and later package with dependencies on:
+This is a Python 3.12 and later package with dependencies on:
 
 * bareASGI
-* graphql-core-next
+* graphql-core
 
 There is optional support for graphene:
 
 ```bash
-pip install bareasgi-graphql-next[graphene]
+pip install bareasgi-graphql[graphene]
 ```

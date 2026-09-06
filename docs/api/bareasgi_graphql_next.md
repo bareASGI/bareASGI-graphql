@@ -1,3 +1,3 @@
-@[bareasgi_graphql_next:add_graphql_next]
+@[bareasgi_graphql:add_graphql]
 
-@[bareasgi_graphql_next:GraphQLController]
+@[bareasgi_graphql:GraphQLController]

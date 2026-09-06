@@ -1,12 +1,6 @@
 """GraphQL WebSocket instance"""
 
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Optional,
-    cast
-)
+from typing import Any, Callable, cast
 
 from bareasgi import WebSocketRequest
 import graphql
@@ -31,8 +25,8 @@ class GraphQLWebSocketHandlerInstance(GraphQLWebSocketHandlerInstanceBase):
     async def subscribe(
             self,
             query: str,
-            variables: Optional[Dict[str, Any]],
-            operation_name: Optional[str]
+            variables: dict[str, Any] | None,
+            operation_name: str | None
     ) -> MapAsyncIterator:
         result = await graphql.subscribe(
             schema=self.schema,
@@ -46,8 +40,8 @@ class GraphQLWebSocketHandlerInstance(GraphQLWebSocketHandlerInstanceBase):
     async def query(
             self,
             query: str,
-            variables: Optional[Dict[str, Any]],
-            operation_name: Optional[str]
+            variables: dict[str, Any] | None,
+            operation_name: str | None
     ) -> ExecutionResult:
         return await graphql.graphql(
             schema=self.schema,

@@ -1,6 +1,6 @@
-# bareASGI-graphql-next
+# bareASGI-graphql
 
-Graphql support for [bareASGI](http://github.com/rob-blackbourn/bareASGI) (read the [documentation](https://rob-blackbourn.github.io/bareASGI-graphql-next/))
+Graphql support for [bareASGI](http://github.com/bareASGI/bareASGI) (read the [documentation](https://bareASGI.github.io/bareASGI-graphql/))
 
 The controller provides a GraphQL GET and POST route, a WebSocket subscription server, and a Graphiql view.
 
@@ -9,22 +9,22 @@ The controller provides a GraphQL GET and POST route, a WebSocket subscription s
 Install from the pie shop.
 
 ```bash
-pip install bareasgi-graphql-next
+pip install bareasgi-graphql
 ```
 
 If you wish to install with the grapheme option:
 
 ```bash
-pip install 'bareasgi-graphql-next[graphene]'
+pip install 'bareasgi-graphql[graphene]'
 ```
 
 ## Usage
 
-You can register the graphql controller with the `add_graphql_next` function.
+You can register the graphql controller with the `add_graphql` function.
 
 ```python
 from bareasgi import Application
-from bareasgi_graphql_next import add_graphql_next
+from bareasgi_graphql import add_graphql
 import graphql
 
 # Get the schema ...
@@ -33,7 +33,7 @@ schema = graphql.GraphQLSchema( ... )
 import uvicorn
 
 app = Application()
-add_graphql_next(app, schema)
+add_graphql(app, schema)
 
 uvicorn.run(app, port=9009)
 

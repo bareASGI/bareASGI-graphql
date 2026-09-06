@@ -1,6 +1,7 @@
 """GraphQL WebSocket handler"""
 
 from typing import Any, Callable
+
 from bareasgi import WebSocketRequest
 import graphql
 
