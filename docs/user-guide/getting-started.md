@@ -1,16 +1,16 @@
 # Getting Started
 
-A utility function `add_graphql_next` is provided.
+A utility function `add_graphql` is provided.
 
 ```python
 from bareasgi import Application
-from bareasgi_graphql_next import add_graphql_next
+from bareasgi_graphql import add_graphql
 from star_wars.star_wars_schema import star_wars_schema
 
 import uvicorn
 
 app = Application()
-add_graphql_next(app, star_wars_schema)
+add_graphql(app, star_wars_schema)
 
 uvicorn.run(app, port=9009)
 ```
@@ -22,7 +22,7 @@ import asyncio
 from datetime import datetime
 
 from bareasgi import Application
-from bareasgi_graphql_next.graphene import add_graphene
+from bareasgi_graphql.graphene import add_graphene
 from graphene import ObjectType, String, Schema, Field
 import uvicorn
 

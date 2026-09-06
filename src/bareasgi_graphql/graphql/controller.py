@@ -1,79 +1,82 @@
-"""Graphene support"""
+"""
+GraphQL controller
+"""
 
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Tuple,
-    Union
+from typing import Any, Callable, cast
+
+from bareasgi import HttpRequest, WebSocketRequest
+import graphql
+from graphql import (
+    ExecutionResult,
+    GraphQLSchema,
+    MapAsyncIterator,
+    MiddlewareManager
 )
-
-from bareasgi import WebSocketRequest, HttpRequest
-from graphene import Schema
-from graphql import ExecutionResult, MiddlewareManager, MapAsyncIterator
 
 from ..controller import GraphQLControllerBase
 
-from .websocket_handler import GrapheneWebSocketHandler
+from .websocket_handler import GraphQLWebSocketHandler
 
 
-class GrapheneController(GraphQLControllerBase):
-    """Graphene Controller"""
+class GraphQLController(GraphQLControllerBase):
+    """GraphQL Controller"""
 
     def __init__(
             self,
-            schema: Schema,
+            schema: GraphQLSchema,
             path_prefix: str,
-            middleware: Optional[Union[Tuple, List, MiddlewareManager]],
+            middleware: tuple | list | MiddlewareManager | None,
             ping_interval: float,
             loads: Callable[[str], Any],
             dumps: Callable[[Any], str]
     ) -> None:
-        """Create a Graphene controller
+        """Create a GraphQL controller
 
         Args:
-            schema (Schema): The Graphene schema
+            schema (GraphQLSchema): The Graphql schema
             path_prefix (str): The path prefix.
-            middleware (Optional[Union[Tuple, List, MiddlewareManager]): The
+            middleware (tuple | list | MiddlewareManager | None): The
                 middleware. Defaults to None.
             ping_interval (float): The WebSocket ping interval.
             loads (Callable[[str], Any]): The function to convert a JSON string
                 to an object.
             dumps (Callable[[Any], str]): The function to convert an object to a
-                JSON string. Defaults to json.dumps.
+                JSON string.
         """
         super().__init__(path_prefix, middleware, ping_interval, loads, dumps)
         self.schema = schema
-        self.ws_subscription_handler = GrapheneWebSocketHandler(schema)
+        self.ws_subscription_handler = GraphQLWebSocketHandler(schema)
 
     async def subscribe(
             self,
             request: HttpRequest,
             query: str,
-            variables: Optional[Dict[str, Any]],
-            operation_name: Optional[str]
+            variables: dict[str, Any] | None,
+            operation_name: str | None
     ) -> MapAsyncIterator:
-        return await self.schema.subscribe(
-            query,
+        result = await graphql.subscribe(
+            schema=self.schema,
+            document=graphql.parse(query),
             variable_values=variables,
             operation_name=operation_name,
             context_value=request
         )
+        return cast(MapAsyncIterator, result)
 
     async def query(
             self,
             request: HttpRequest,
             query: str,
-            variables: Optional[Dict[str, Any]],
-            operation_name: Optional[str]
+            variables: dict[str, Any] | None,
+            operation_name: str | None
     ) -> ExecutionResult:
-        return await self.schema.execute_async(
-            source=query,
+        return await graphql.graphql(
+            schema=self.schema,
+            source=graphql.Source(query),  # source=query,
             variable_values=variables,
             operation_name=operation_name,
-            context_value=request
+            context_value=request,
+            middleware=self.middleware
         )
 
     async def handle_websocket_subscription(self, request: WebSocketRequest) -> None:

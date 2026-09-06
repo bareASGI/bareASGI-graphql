@@ -1,8 +1,8 @@
-site_name: bareASGI-graphql-next
+site_name: bareASGI-graphql
 site_description: GraphQL support for bareASGI
 
-repo_name: rob-blackbourn/bareASGI-graphql-next
-repo_url: https://github.com/rob-blackbourn/bareASGI-graphql-next
+repo_name: bareASGI/bareASGI-graphql
+repo_url: https://github.com/bareASGI/bareASGI-graphql
 edit_uri: ""
 
 theme:
@@ -17,7 +17,7 @@ nav:
     - user-guide/getting-started.md
     - user-guide/clients.md
   - API:
-    - bareasgi_graphql_next: api/bareasgi_graphql_next.md
+    - bareasgi_graphql: api/bareasgi_graphql.md
     - bareasgi_graphene: api/bareasgi_graphene.md
   
 markdown_extensions:

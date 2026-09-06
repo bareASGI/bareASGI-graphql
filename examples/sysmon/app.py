@@ -11,7 +11,7 @@ from bareasgi_cors import CORSMiddleware
 from bareutils import text_writer, header
 import pkg_resources
 
-from bareasgi_graphql_next import add_graphql_next
+from bareasgi_graphql import add_graphql
 
 from .system_monitor import SystemMonitor
 from .schema import schema
@@ -70,7 +70,7 @@ def make_application() -> Application:
         shutdown_handlers=[stop_service],
         middlewares=[cors_middleware]
     )
-    add_graphql_next(app, schema, '/sysmon/api')
+    add_graphql(app, schema, '/sysmon/api')
 
     app.http_router.add({'GET'}, '/sysmon/api/graphql2', graphql_handler)
     app.http_router.add({'GET'}, '/sysmon/api/get-cookie', get_coookie)

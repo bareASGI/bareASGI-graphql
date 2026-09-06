@@ -38,7 +38,7 @@ def initialise_logging() -> None:
                 'handlers': ['stdout'],
                 'propagate': False
             },
-            'bareasgi_graphql_next': {
+            'bareasgi_graphql': {
                 'level': 'DEBUG',
                 'handlers': ['stdout'],
                 'propagate': False

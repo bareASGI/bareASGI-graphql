@@ -391,7 +391,7 @@ subscription.unsubscribe()
 
 There are some prebuilt javascript clients:
 
-* [barejs-graphql-client](https://github.com/rob-blackbourn/barejs-graphql-client)
+* [barejs-graphql-client](https://github.com/bareASGI/barejs-graphql-client)
     for callback style clients.
-* [barejs-graphql-observable](https://github.com/rob-blackbourn/barejs-graphql-observable)
+* [barejs-graphql-observable](https://github.com/bareASGI/barejs-graphql-observable)
     for observable style clients using [rxjs](https://rxjs-dev.firebaseapp.com/api).

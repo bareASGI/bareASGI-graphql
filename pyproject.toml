@@ -1,39 +1,93 @@
-[tool.poetry]
-name = "bareasgi-graphql-next"
-version = "5.0.4"
+[project]
+name = "bareASGI-graphQL"
+version = "5.0.0"
 description = "GraphQL support for the bareASGI framework"
-authors = ["Rob Blackbourn <rob.blackbourn@gmail.com>"]
-license = "Apache-2.0"
-readme = "README.md"
-packages = [
-    { include = "bareasgi_graphql_next" },
+authors = [
+    { name = "Rob Blackbourn", email = "rob.blackbourn@gmail.com" }
 ]
-repository = "https://github.com/rob-blackbourn/bareasgi-graphql-next"
+requires-python = ">=3.12"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Web Environment",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Internet :: WWW/HTTP",
+]
+readme = "README.md"
+dependencies = [
+    "bareASGI>=5.0.0,<6",
+    "graphql-core>=3.1,<4",
+]
+license = "Apache-2.0"
+license-files = [
+    "LICENSE"
+]
+keywords = [
+    "bareasgi",
+]
 
-[tool.poetry.dependencies]
-python = "^3.8"
-bareASGI = "^4.0.0"
-graphql-core = "^3.1"
-graphene = {version = "^3.0", optional = true}
+[project.optional-dependencies]
+graphene = [
+    "graphene>=3.0,<4",
+]
+dev = [
+    "autopep8",
+    "coverage",
+    "mypy",
+    "pytest",
+    "pytest-asyncio",
+    "pylint",
+    "types-setuptools",
+    "types-graphene",
+]
+docs = [
+    "mkdocs",
+    "mkdocs-material",
+    "jetblack-markdown",
+    "mike",
+]
+examples = [
+    "hypercorn",
+    "uvicorn"
+]
 
-[tool.poetry.dev-dependencies]
-pytest = "^5.0"
-pytest-asyncio = "^0.10"
-pytest-runner = "^5.1"
-pylint = "^2.12"
-mypy = "^0.931"
-autopep8 = "^1.6"
-mkdocs = "^1.2"
-mkdocs-material = "^7.2"
-jetblack-markdown = "^0.6"
-mike = "^1.1"
-Hypercorn = "^0.11"
-uvicorn = "^0.15"
-types-setuptools = "^57.4"
-
-[tool.poetry.extras]
-graphene = [ "graphene" ]
+[project.urls]
+Homepage = "https://bareASGI.github.io/bareASGI-graphql"
+Repository = "https://github.com/bareASGI/bareASGI-graphql"
+Issues = "https://github.com/bareASGI/bareASGI-graphql/issues"
 
 [build-system]
-requires = ["poetry>=0.12"]
-build-backend = "poetry.masonry.api"
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+# pylint
+[tool.pylint.main]
+py-version = "3.12"
+jobs = 4
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "ex", "Run", "_"]
+bad-names = ["foo", "bar", "baz", "toto", "tutu", "tata"]
+
+[tool.pylint."messages control"]
+disable = [
+    "missing-module-docstring",
+]
+
+# pytest
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]
+
+# mypy
+[tool.mypy]
+files = [ "src", "tests", "examples" ]
+
+[[tool.mypy.overrides]]
+module = "pytest"
+ignore_missing_imports = true

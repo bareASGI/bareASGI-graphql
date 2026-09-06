@@ -2,23 +2,10 @@
 
 from abc import ABCMeta, abstractmethod
 import asyncio
-from cgi import parse_multipart
 from datetime import datetime
 from functools import partial
-import io
 import logging
-from typing import (
-    Any,
-    AsyncIterable,
-    Callable,
-    Dict,
-    List,
-    Mapping,
-    Optional,
-    Tuple,
-    Union,
-    cast
-)
+from typing import Any, AsyncIterable, Callable, Mapping, cast
 from urllib.parse import parse_qs, urlencode
 
 from bareasgi import (
@@ -26,9 +13,16 @@ from bareasgi import (
     HttpRequest,
     HttpResponse,
     WebSocketRequest,
-    HttpMiddlewareCallback
+    HttpMiddlewareCallback,
 )
-from bareutils import text_reader, text_writer, response_code, header
+from bareutils import (
+    bytes_reader,
+    parse_form_data,
+    text_reader,
+    text_writer,
+    response_code,
+    header,
+)
 import graphql
 from graphql import (
     ExecutionResult,
@@ -52,7 +46,7 @@ LOGGER = logging.getLogger(__name__)
 
 def _encode_sse(
         dumps: Callable[[Any], str],
-        execution_result: Optional[ExecutionResult]
+        execution_result: ExecutionResult | None
 ) -> bytes:
     if execution_result is None:
         payload = f'event: ping\ndata: {datetime.utcnow()}\n\n'
@@ -72,7 +66,7 @@ def _encode_sse(
 
 def _encode_json(
         dumps: Callable[[Any], str],
-        execution_result: Optional[ExecutionResult]
+        execution_result: ExecutionResult | None
 ) -> bytes:
     if execution_result is None:
         return b'\n'
@@ -94,7 +88,7 @@ class GraphQLControllerBase(metaclass=ABCMeta):
     def __init__(
             self,
             path_prefix: str,
-            middleware: Optional[Union[Tuple, List, MiddlewareManager]],
+            middleware: tuple | list | MiddlewareManager | None,
             ping_interval: float,
             loads: Callable[[str], Any],
             dumps: Callable[[Any], str]
@@ -111,17 +105,17 @@ class GraphQLControllerBase(metaclass=ABCMeta):
             self,
             app: Application,
             path_prefix: str = '',
-            rest_middleware: Optional[HttpMiddlewareCallback] = None,
-            view_middleware: Optional[HttpMiddlewareCallback] = None
+            rest_middleware: HttpMiddlewareCallback | None = None,
+            view_middleware: HttpMiddlewareCallback | None = None
     ) -> Application:
         """Add the routes
 
         Args:
             app (Application): The ASGI application.
             path_prefix (str, optional): The path prefix. Defaults to ''.
-            rest_middleware (Optional[HttpMiddlewareCallback], optional): The
+            rest_middleware (HttpMiddlewareCallback | None, optional): The
                 rest middleware. Defaults to None.
-            view_middleware (Optional[HttpMiddlewareCallback], optional): The
+            view_middleware (HttpMiddlewareCallback | None, optional): The
                 view middleware. Defaults to None.
 
         Returns:
@@ -233,8 +227,8 @@ class GraphQLControllerBase(metaclass=ABCMeta):
             body = await self._get_query_document(request)
 
             query: str = body['query']
-            variables: Optional[Dict[str, Any]] = body.get('variables')
-            operation_name: Optional[str] = body.get('operationName')
+            variables: dict[str, Any] | None = body.get('variables')
+            operation_name: str | None = body.get('operationName')
 
             query_document = graphql.parse(query)
 
@@ -292,14 +286,14 @@ class GraphQLControllerBase(metaclass=ABCMeta):
             body = {
                 name.decode('utf-8'): self.loads(value[0].decode('utf-8'))
                 for name, value in cast(
-                    Dict[bytes, List[bytes]],
+                    dict[bytes, list[bytes]],
                     parse_qs(request.scope['query_string'])
                 ).items()
             }
 
             query: str = body['query']
-            variables: Optional[Dict[str, Any]] = body.get('variables')
-            operation_name: Optional[str] = body.get('operationName')
+            variables: dict[str, Any] | None = body.get('variables')
+            operation_name: str | None = body.get('operationName')
 
             return await self._handle_streaming_subscription(
                 request,
@@ -343,8 +337,8 @@ class GraphQLControllerBase(metaclass=ABCMeta):
             body = self.loads(text)
 
             query: str = body['query']
-            variables: Optional[Dict[str, Any]] = body.get('variables')
-            operation_name: Optional[str] = body.get('operationName')
+            variables: dict[str, Any] | None = body.get('variables')
+            operation_name: str | None = body.get('operationName')
 
             return await self._handle_streaming_subscription(
                 request,
@@ -382,21 +376,17 @@ class GraphQLControllerBase(metaclass=ABCMeta):
             body = parse_qs(await text_reader(request.body))
             return {name: value[0] for name, value in body.items()}
         elif media_type == b'multipart/form-data':
-            if parameters is None:
+            if parameters is None or b'boundary' not in parameters:
                 raise ValueError(
                     'Missing content type parameters for multipart/form-data'
                 )
-            param_dict = {
-                key.decode('utf-8'): val
-                for key, val in parameters.items()
-            }
-            multipart_dict = parse_multipart(
-                io.StringIO(await text_reader(request.body)),
-                param_dict
+            fields, _files = parse_form_data(
+                await bytes_reader(request.body),
+                parameters[b'boundary'],
             )
             return {
                 name: value[0]
-                for name, value in multipart_dict.items()
+                for name, value in fields.items()
             }
         else:
             raise RuntimeError(
@@ -407,14 +397,14 @@ class GraphQLControllerBase(metaclass=ABCMeta):
             self,
             request: HttpRequest,
             query: str,
-            variables: Optional[Dict[str, Any]],
-            operation_name: Optional[str]
+            variables: dict[str, Any] | None,
+            operation_name: str | None
     ) -> HttpResponse:
         LOGGER.debug("Processing a query or mutation.")
 
         result = await self.query(request, query, variables, operation_name)
 
-        response: Dict[str, Any] = {'data': result.data}
+        response: dict[str, Any] = {'data': result.data}
         if result.errors:
             response['errors'] = [
                 error.formatted for error in result.errors]
@@ -471,8 +461,8 @@ class GraphQLControllerBase(metaclass=ABCMeta):
             self,
             request: HttpRequest,
             query: str,
-            variables: Optional[Dict[str, Any]],
-            operation_name: Optional[str]
+            variables: dict[str, Any] | None,
+            operation_name: str | None
     ) -> HttpResponse:
         # If unspecified default to server sent events as they have better support.
         accept = cast(
@@ -545,16 +535,16 @@ class GraphQLControllerBase(metaclass=ABCMeta):
             self,
             request: HttpRequest,
             query: str,
-            variables: Optional[Dict[str, Any]],
-            operation_name: Optional[str],
+            variables: dict[str, Any] | None,
+            operation_name: str | None,
     ) -> MapAsyncIterator:
         """Execute a subscription.
 
         Args:
             request (HttpRequest): The http request.
             query (str): The subscription query.
-            variables (Optional[Dict[str, Any]]): Optional variables.
-            operation_name (Optional[str]): An optional operation name.
+            variables (dict[str, Any] | None): Optional variables.
+            operation_name (str | None): An optional operation name.
 
         Returns:
             MapAsyncIterator: An asynchronous iterator of the results.
@@ -565,16 +555,16 @@ class GraphQLControllerBase(metaclass=ABCMeta):
             self,
             request: HttpRequest,
             query: str,
-            variables: Optional[Dict[str, Any]],
-            operation_name: Optional[str],
+            variables: dict[str, Any] | None,
+            operation_name: str | None,
     ) -> ExecutionResult:
         """Execute a query
 
         Args:
             request (HttpRequest): The http request.
             query (str): The subscription query.
-            variables (Optional[Dict[str, Any]]): Optional variables.
-            operation_name (Optional[str]): An optional operation name.
+            variables (dict[str, Any] | None): Optional variables.
+            operation_name (str | None): An optional operation name.
 
         Returns:
             ExecutionResult: The query results.

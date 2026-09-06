@@ -3,9 +3,9 @@
 import uvicorn
 
 from bareasgi import Application
-from bareasgi_graphql_next.graphene import add_graphene
+from bareasgi_graphql.graphene import add_graphene
 
-from demos.time_subscriber_graphene.time_schema import SCHEMA
+from examples.time_subscriber_graphene.time_schema import SCHEMA
 
 app = Application()
 add_graphene(app, SCHEMA)

@@ -1,6 +1,6 @@
 """Graphene WebSocket instance"""
 
-from typing import Any, Callable, Dict, Optional
+from typing import Any, Callable
 
 from bareasgi import WebSocketRequest
 from graphene import Schema
@@ -25,8 +25,8 @@ class GrapheneWebSocketHandlerInstance(GraphQLWebSocketHandlerInstanceBase):
     async def subscribe(
             self,
             query: str,
-            variables: Optional[Dict[str, Any]],
-            operation_name: Optional[str]
+            variables: dict[str, Any] | None,
+            operation_name: str | None
     ) -> MapAsyncIterator:
         return await self.schema.subscribe(
             query,
@@ -38,8 +38,8 @@ class GrapheneWebSocketHandlerInstance(GraphQLWebSocketHandlerInstanceBase):
     async def query(
             self,
             query: str,
-            variables: Optional[Dict[str, Any]],
-            operation_name: Optional[str]
+            variables: dict[str, Any] | None,
+            operation_name: str | None
     ) -> ExecutionResult:
         return await self.schema.execute_async(
             source=query,
